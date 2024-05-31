@@ -1,105 +1,147 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+
 #define ccw 32
 #define cw 35
 #define swr 34
 #define sw1 26
 
-Adafruit_SSD1306 display=(128, 64, &Wire, -1);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-//functions
-int rotary(int state, int laststate);//read rotary, get menu position
-void menuscroll(int counter, String menu);
+// Funktionen
+int rotary(int state, int laststate); // Rotary Encoder lesen, Menüposition bekommen
+void menuscroll(int counter, String menu[], int menuSize);
 void timer(int t);
-String menucopy(String menu);
+void menucopy(String source[], String dest[], int size);
+void submenu(String choice);
 
-//var
-int timers[] = {2,5,10,15,20,25,30,35,40,45};
+// Variablen
+int timers[] = {2, 5, 10, 15, 20, 25, 30, 35, 40, 45};
 String timermenu[] = {"Time 2s", "Time 5s", "Time 10s", "Time 15s", "Time 20s", "Time 25s", "Time 30s", "Time 35s", "Time 40s", "Time 45s"};
 String mainmenu[] = {"Timer", "Eigener Timer", "2 Timer", "Gerichte", "Einstellungen", "Aus"};
 String Gerichtemenu[] = {"weiches Ei", "mittleres Ei", "hartes Ei", "Spaghetti", "Penne"};
+int Gerichtetimer[] = {5,7,10,8,9};
 String Settingsmenu[] = {"Lautstärke", "Helligkeit", "StandbyTime"};
-bool laststate = digitalRead(ccw);
-int counter, position, sec, t, menuSize = 0;
-long currentmillis, lastmillis;
-String menu[], choice[];
 
+bool laststate;
+int counter = 0, position = 0, sec = 0, t = 0;
+long currentmillis = 0, lastmillis = 0;
+String currentMenu[10];
+int currentMenuSize = 0;
+int menunumber = 99;
 
-void setup(){
+void setup() {
   Serial.begin(115200);
   pinMode(cw, INPUT);
   pinMode(ccw, INPUT);
   pinMode(swr, INPUT);
   pinMode(sw1, INPUT);
-  display.begin();
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Adresse 0x3C für 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;);
+  }
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(1);
-  display.setCursor(0,0);
-  for(int i=0; i<menuSize; i++){
-    if(i==1){
-      display.print("->");
+  display.setCursor(0, 0);
+
+  // Hauptmenü initialisieren
+  currentMenuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
+  menucopy(mainmenu, currentMenu, currentMenuSize);
+
+  for (int i = 0; i < currentMenuSize; i++) {
+    if (i == counter) {
+      display.print("-> ");
+    } else {
+      display.print("   ");
     }
     display.println(mainmenu[i]);
   }
   display.display();
-  String menu = menucopy(mainmenu[6]);
-  int menuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
+
+  laststate = digitalRead(ccw);
 }
 
-void loop(){
-  if(digitalRead(sw1)==HIGH){
-    for(int i=0; i<menuSize; i++){
-      Serial.print("Zahl: ");
-      Serial.println(menu[i]);
-    }
-  }
+void loop() {
   bool state = digitalRead(ccw);
   counter = rotary(state, laststate);
-  if(state != laststate){
-    menuscroll(counter, menu[menuSize]);
+
+  if (state != laststate) {
+    menuscroll(counter, currentMenu, currentMenuSize);
   }
   laststate = state;
-  if(digitalRead(swr)==LOW){
-    String choice = menu[(counter+1)%menuSize];
-    int menuSize = sizeof(choice)/ sizeof(choice[0]);
-    String menu = menucopy(choice[menuSize]);
+
+  if (digitalRead(swr) == LOW) {
+    String choice = currentMenu[counter];
+    if (choice == "Timer") {
+      currentMenuSize = sizeof(timermenu) / sizeof(timermenu[0]);
+      menucopy(timermenu, currentMenu, currentMenuSize);
+    } else if (choice == "Eigener Timer"){
+      //Eigene Timer Funtkion
+    } else if (choice == "2 Timer"){
+      //Zwei Timer Funktion
+    }else if (choice == "Gerichte"){
+      currentMenuSize = sizeof(Gerichtemenu) / sizeof(Gerichtemenu[0]);
+      menucopy(Gerichtemenu, currentMenu, currentMenuSize);
+      menunumber = 1;
+    } else if (choice == "Einstellungen") {
+      currentMenuSize = sizeof(Settingsmenu) / sizeof(Settingsmenu[0]);
+      menucopy(Settingsmenu, currentMenu, currentMenuSize);
+      menunumber = 2;
+    } else if (choice == "Aus") {
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.println("System aus...");
+      display.display();
+      delay(2000);
+      // Hier können Sie eine Funktion zum Ausschalten oder in den Schlafmodus wechseln hinzufügen
+    } else if (choice.startsWith("Time")) {
+      int t = timers[counter];
+      timer(t);
+      currentMenuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
+      menucopy(mainmenu, currentMenu, currentMenuSize);
+    } else{
+      submenu(choice);
+    }
+    counter = 0; // Reset counter to start at the beginning of new menu
+    menuscroll(counter, currentMenu, currentMenuSize);
   }
 }
 
-int rotary(int state, int laststate){//read rotary, get menu position
-  if(state != laststate){
-    if(digitalRead(cw) != state){
-      counter = (counter + 1)%menuSize;
-      //Serial.print("cw:");
-      //Serial.println(counter);
-    }else{
-      counter = (counter - 1 + menuSize)%menuSize;
-      //Serial.print("ccw:");
-      //Serial.println(counter);
+int rotary(int state, int laststate) { // Rotary Encoder lesen, Menüposition bekommen
+  if (state != laststate) {
+    if (digitalRead(cw) != state) {
+      counter = (counter + 1) % currentMenuSize;
+    } else {
+      counter = (counter - 1 + currentMenuSize) % currentMenuSize;
     }
   }
   return counter;
 }
 
-void menuscroll(int counter, String menu){
-  int menuSize = sizeof(menu) / sizeof(menu[0]);
+void menuscroll(int counter, String menu[], int menuSize) {
   display.clearDisplay();
-  display.setCursor(0,0);
-  for(int i=0; i<menuSize; i++){
-    if(i==1){
-      display.print("->");
+  display.setCursor(0, 0);
+  for (int i = 0; i < menuSize; i++) {
+    if (i == counter) {
+      display.print("-> ");
+    } else {
+      display.print("   ");
     }
-    
-    display.println(menu[(counter+i)%menuSize]);
+    display.println(menu[i]);
   }
   display.display();
   Serial.print("ms:");
   Serial.println(counter);
 }
 
-void timer(int t){
+void timer(int t) {
   Serial.printf("%d timer", t);
   sec = 0;
   display.clearDisplay();
@@ -109,7 +151,7 @@ void timer(int t){
   delay(1000);
   lastmillis = millis();
   while (sec < t) {
-    if(digitalRead(sw1) == HIGH){
+    if (digitalRead(sw1) == HIGH) {
       break;
     }
     currentmillis = millis();
@@ -132,11 +174,41 @@ void timer(int t){
   delay(2000);
 }
 
-String menucopy(String menu){
-  int menuSize = sizeof(menu) / sizeof(menu[0]);
-  String currentmenu[menuSize];
-  for(int i=0; i>=menuSize; i++){
-    currentmenu[i] = menu[i];
+void menucopy(String source[], String dest[], int size) {
+  for (int i = 0; i < size; i++) {
+    dest[i] = source[i];
   }
-  return currentmenu[menuSize];
+}
+
+void submenu(String choice){
+  switch (menunumber)
+  {
+  case 1:
+    if (choice == "weiches Ei") {
+      timer(Gerichtetimer[0]);
+    } else if (choice == "mittleres Ei") {
+      timer(Gerichtetimer[1]);
+    } else if (choice == "hartes Ei") {
+      timer(Gerichtetimer[2]);
+    } else if (choice == "Spaghetti"){
+      timer(Gerichtetimer[3]);
+    } else if (choice == "Penne"){
+      timer(Gerichtetimer[4]);
+    }
+    break;
+  case 2:
+    if (choice == "Lautstärke"){
+      Serial.print("Lautstärke");
+      //Funktion für Lautstärke
+    } else if (choice == "Helligkeit"){
+      Serial.print("Helligkeit");
+      //Funktion für Helligkeit
+    }else if (choice == "Standby Time"){
+      Serial.print("Standby Time");
+      //Funktion für Standby Time
+    }
+  default:
+    break;
+  }
+  
 }
