@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <FS.h>
+#include <WiFi.h>
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -22,11 +24,11 @@ void submenu(String choice);
 
 // Variablen
 int timers[] = {2, 5, 10, 15, 20, 25, 30, 35, 40, 45};
-String timermenu[] = {"Time 2s", "Time 5s", "Time 10s", "Time 15s", "Time 20s", "Time 25s", "Time 30s", "Time 35s", "Time 40s", "Time 45s"};
+String timermenu[] = {"Time 2s", "Time 5s", "Time 10s", "Time 15s", "Time 20s", "Time 25s", "Time 30s", "Time 35s", "Time 40s", "Zurueck"};
 String mainmenu[] = {"Timer", "Eigener Timer", "2 Timer", "Gerichte", "Einstellungen", "Aus"};
-String Gerichtemenu[] = {"weiches Ei", "mittleres Ei", "hartes Ei", "Spaghetti", "Penne"};
+String Gerichtemenu[] = {"weiches Ei", "mittleres Ei", "hartes Ei", "Spaghetti", "Penne", "Zurueck"};
 int Gerichtetimer[] = {5,7,10,8,9};
-String Settingsmenu[] = {"Lautstärke", "Helligkeit", "StandbyTime"};
+String Settingsmenu[] = {"Lautstärke", "Helligkeit", "StandbyTime","Zurueck"};
 
 bool laststate;
 int counter = 0, position = 0, sec = 0, t = 0;
@@ -82,6 +84,9 @@ void loop() {
     if (choice == "Timer") {
       currentMenuSize = sizeof(timermenu) / sizeof(timermenu[0]);
       menucopy(timermenu, currentMenu, currentMenuSize);
+    }else if (choice == "Zurueck"){
+      currentMenuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
+      menucopy(mainmenu, currentMenu, currentMenuSize);
     } else if (choice == "Eigener Timer"){
       //Eigene Timer Funtkion
     } else if (choice == "2 Timer"){
@@ -104,13 +109,14 @@ void loop() {
     } else if (choice.startsWith("Time")) {
       int t = timers[counter];
       timer(t);
-      currentMenuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
-      menucopy(mainmenu, currentMenu, currentMenuSize);
+      currentMenuSize = sizeof(timermenu) / sizeof(timermenu[0]);
+      menucopy(timermenu, currentMenu, currentMenuSize);
     } else{
       submenu(choice);
     }
     counter = 0; // Reset counter to start at the beginning of new menu
     menuscroll(counter, currentMenu, currentMenuSize);
+    delay(500);
   }
 }
 
@@ -128,13 +134,26 @@ int rotary(int state, int laststate) { // Rotary Encoder lesen, Menüposition be
 void menuscroll(int counter, String menu[], int menuSize) {
   display.clearDisplay();
   display.setCursor(0, 0);
-  for (int i = 0; i < menuSize; i++) {
+  if (counter > 7){
+    for (int i = 7; i < menuSize; i++) {
     if (i == counter) {
       display.print("-> ");
     } else {
       display.print("   ");
     }
     display.println(menu[i]);
+  }
+  display.display();
+  }else{
+    for (int i= 0; i < menuSize; i++) {
+    if (i == counter) {
+      display.print("-> ");
+    } else {
+      display.print("   ");
+    }
+    display.println(menu[i]);
+  }
+  display.display();
   }
   display.display();
   Serial.print("ms:");
@@ -151,7 +170,7 @@ void timer(int t) {
   delay(1000);
   lastmillis = millis();
   while (sec < t) {
-    if (digitalRead(sw1) == HIGH) {
+    if (digitalRead(swr) == LOW) {
       break;
     }
     currentmillis = millis();
@@ -194,7 +213,7 @@ void submenu(String choice){
       timer(Gerichtetimer[3]);
     } else if (choice == "Penne"){
       timer(Gerichtetimer[4]);
-    }
+    } 
     break;
   case 2:
     if (choice == "Lautstärke"){
