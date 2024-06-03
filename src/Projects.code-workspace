@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"name": "Duoringo",
+			"path": ".."
+		},
+		{
+			"name": "Neopixel",
+			"path": "../../Neopixel"
+		}
+	],
+	"settings": {}
+}
