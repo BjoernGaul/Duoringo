@@ -3,6 +3,8 @@
 #include <Adafruit_SSD1306.h>
 #include <FS.h>
 #include <WiFi.h>
+#include <Adafruit_NeoPixel.h>
+
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -12,30 +14,66 @@
 #define cw 35
 #define swr 34
 #define sw1 26
+#define neoPixelPin 14
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Funktionen
-int rotary(int state, int laststate); // Rotary Encoder lesen, Menüposition bekommen
-void menuscroll(int counter, String menu[], int menuSize);
-void timer(int t);
-void menucopy(String source[], String dest[], int size);
+
+// Rotary Encoder lesen, Menüposition bekommen
+int rotary(int state, int laststate); 
+//Durch Menü scrollen
+void menuscroll(int counter, String menu[], int menuSize); 
+// Base Timer Function
+void timer(int t); 
+// Copy von ausgewählten Menü erstellen
+void menucopy(String source[], String dest[], int size); 
+// Auswahl in Submenüs
 void submenu(String choice);
+// Neopixel aus 
+void allOff(); 
+// Pixel nach Timer aus
+void Pixels(int pixels);
+// LED Streifen Farbe auswählen 
+void LEDcolor(); 
 
 // Variablen
-int timers[] = {2, 5, 10, 15, 20, 25, 30, 35, 40, 45};
-String timermenu[] = {"Time 2s", "Time 5s", "Time 10s", "Time 15s", "Time 20s", "Time 25s", "Time 30s", "Time 35s", "Time 40s", "Zurueck"};
-String mainmenu[] = {"Timer", "Eigener Timer", "2 Timer", "Gerichte", "Einstellungen", "Aus"};
-String Gerichtemenu[] = {"weiches Ei", "mittleres Ei", "hartes Ei", "Spaghetti", "Penne", "Zurueck"};
-int Gerichtetimer[] = {5,7,10,8,9};
-String Settingsmenu[] = {"Lautstärke", "Helligkeit", "StandbyTime","Zurueck"};
 
-bool laststate;
-int counter = 0, position = 0, sec = 0, t = 0;
-long currentmillis = 0, lastmillis = 0;
-String currentMenu[10];
-int currentMenuSize = 0;
-int menunumber = 99;
+// Basetimer zeiten
+int timers[] = {2, 5, 10, 15, 20, 25, 30, 35, 40, 45}; 
+// SUbmenü für Basetimer
+String timermenu[] = {"Time 2s", "Time 5s", "Time 10s", "Time 15s", "Time 20s", "Time 25s", "Time 30s", "Time 35s", "Time 40s", "Zurueck"}; 
+//Hauptmenü
+String mainmenu[] = {"Timer", "Eigener Timer", "2 Timer", "Gerichte", "Einstellungen", "Aus"}; 
+//Gerichtetimer Submenü
+String Gerichtemenu[] = {"weiches Ei", "mittleres Ei", "hartes Ei", "Spaghetti", "Penne", "Zurueck"}; 
+// Gerichte Ziten
+int Gerichtetimer[] = {5,7,10,8,9}; 
+// Einstellungen Submenü
+String Settingsmenu[] = {"Lautstärke", "Helligkeit", "StandbyTime","LED Farbe","Zurueck"}; 
+
+// State for Rotary
+bool laststate; 
+// Variablen für Rotary, Timer
+int counter = 0, sec = 0, t = 0; 
+// Variablen für Millis funktion
+long currentmillis = 0, lastmillis = 0; 
+//String für Menüauswahl
+String currentMenu[]; 
+//int für Menüauswahl
+int currentMenuSize = 0; 
+//Switch int für Menüauswahl
+int menunumber = 99; 
+//LED Streifen Pixelzahl
+float numPixels = 8; 
+//Farben LED Streifen
+int red, green, blue = 0; 
+
+//Initialisiere Adafruit
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(numPixels, neoPixelPin, NEO_GRB + NEO_KHZ800);
+
+//Base Setup /Mainmenu
 
 void setup() {
   Serial.begin(115200);
@@ -43,11 +81,22 @@ void setup() {
   pinMode(ccw, INPUT);
   pinMode(swr, INPUT);
   pinMode(sw1, INPUT);
+  pinMode(neoPixelPin, OUTPUT);
+
+  strip.begin();  // initialize the strip
+  strip.show();   // make sure it is visible
+  strip.clear();
+
+  for(int i; i>numPixels; i++){
+    strip.setPixelColor(i, 255,0,0);// Pixeltest
+  }
+  strip.show();
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Adresse 0x3C für 128x64
-    Serial.println(F("SSD1306 allocation failed"));
+    Serial.println(F("SSD1306 allocation failed"));// Display finden / Fehler
     for (;;);
   }
+  //initialize display
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(1);
@@ -59,7 +108,7 @@ void setup() {
 
   for (int i = 0; i < currentMenuSize; i++) {
     if (i == counter) {
-      display.print("-> ");
+      display.print("-> ");// Auswahlpfeil auf Baseposition
     } else {
       display.print("   ");
     }
@@ -67,11 +116,11 @@ void setup() {
   }
   display.display();
 
-  laststate = digitalRead(ccw);
+  laststate = digitalRead(ccw);// Erster Status für Rotary
 }
 
 void loop() {
-  bool state = digitalRead(ccw);
+  bool state = digitalRead(ccw);// Rotary neuauslesen
   counter = rotary(state, laststate);
 
   if (state != laststate) {
@@ -79,12 +128,14 @@ void loop() {
   }
   laststate = state;
 
+  //Menüauswahl
+
   if (digitalRead(swr) == LOW) {
     String choice = currentMenu[counter];
     if (choice == "Timer") {
       currentMenuSize = sizeof(timermenu) / sizeof(timermenu[0]);
       menucopy(timermenu, currentMenu, currentMenuSize);
-    }else if (choice == "Zurueck"){
+    }else if (choice == "Zurueck"){ //goto mainmenu
       currentMenuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
       menucopy(mainmenu, currentMenu, currentMenuSize);
     } else if (choice == "Eigener Timer"){
@@ -105,7 +156,7 @@ void loop() {
       display.println("System aus...");
       display.display();
       delay(2000);
-      // Hier können Sie eine Funktion zum Ausschalten oder in den Schlafmodus wechseln hinzufügen
+      // Abschaltfunktion
     } else if (choice.startsWith("Time")) {
       int t = timers[counter];
       timer(t);
@@ -161,6 +212,7 @@ void menuscroll(int counter, String menu[], int menuSize) {
 }
 
 void timer(int t) {
+  int pixelTime = 0;
   Serial.printf("%d timer", t);
   sec = 0;
   display.clearDisplay();
@@ -183,6 +235,12 @@ void timer(int t) {
       display.setCursor(0, 10);
       display.printf("%ds", t - sec);
       display.display();
+      Serial.printf("%d numPixels, %d t, %d sec", numPixels, t, sec);
+      Serial.println(numPixels/t);
+      pixelTime = int((numPixels/t)*sec);
+      Serial.printf("%dPixeltime", pixelTime);
+      Pixels(pixelTime);
+
     }
   }
   // Timer completed
@@ -191,6 +249,7 @@ void timer(int t) {
   display.printf("Timer Completed");
   display.display();
   delay(2000);
+  allOff();
 }
 
 void menucopy(String source[], String dest[], int size) {
@@ -225,9 +284,82 @@ void submenu(String choice){
     }else if (choice == "Standby Time"){
       Serial.print("Standby Time");
       //Funktion für Standby Time
+    }else if(choice == "LED Farbe"){
+      LEDcolour();
     }
   default:
     break;
   }
   
+}
+
+void allOff() {
+  strip.clear();
+  strip.show();
+}
+
+void Pixels(int pixels){
+  red = 255;
+  Serial.println("in function");
+  Serial.println(pixels);
+  for(int i; i>pixels; i++){
+    strip.setPixelColor(i, red ,green ,blue);
+  }
+  Serial.print("LED an");
+  strip.show();
+}
+
+void LEDcolour(){
+  int back = 0;
+  int colourchange = 0;
+  int colour = 0;
+  do{
+    switch (colour)
+    {
+    case 0:
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.printf("-> Rot:%d", red);
+      display.printf("   Blau:%d", blue);
+      display.printf("   Grün:%d", green);
+      display.display();
+      red = colour;
+      break;
+    case 1:
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.printf("   Rot:%d", red);
+      display.printf("-> Blau:%d", blue);
+      display.printf("   Grün:%d", green);
+      display.display();
+      blue = colour;
+      break;
+    case 2:
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.printf("   Rot:%d", red);
+      display.printf("   Blau:%d", blue);
+      display.printf("-> Grün:%d", green);
+      display.display();
+      green = colour;
+      break;
+    default:
+      break;
+    }
+  
+  bool state = digitalRead(ccw);
+  currentMenuSize = 255;
+  counter = rotary(state, laststate);
+  if (state != laststate) {
+    colour = counter;
+  }
+  laststate = state;
+  if(digitalRead(swr) == LOW){
+    colourchange = (colourchange+1)%3;
+  }
+  if(digitalRead(sw1 == HIGH)){
+    back = 1;
+  }
+  
+  }while (back == 0);
 }
