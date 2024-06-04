@@ -35,6 +35,7 @@ void allOff();
 void Pixels(int pixels);
 // LED Streifen Farbe auswählen 
 void LEDcolor(); 
+void activate();
 
 // Variablen
 
@@ -58,7 +59,7 @@ int counter = 0, sec = 0, t = 0;
 // Variablen für Millis funktion
 long currentmillis = 0, lastmillis = 0; 
 //String für Menüauswahl
-String currentMenu[]; 
+String currentMenu[99]; 
 //int für Menüauswahl
 int currentMenuSize = 0; 
 //Switch int für Menüauswahl
@@ -66,7 +67,13 @@ int menunumber = 99;
 //LED Streifen Pixelzahl
 float numPixels = 8; 
 //Farben LED Streifen
-int red, green, blue = 0; 
+int green, blue = 0; 
+int red = 255;
+int pixelcol = 0;
+float pixelpersec = 0;
+int back = 0;
+int colorchange = 0;
+int color = 0;
 
 //Initialisiere Adafruit
 
@@ -87,10 +94,6 @@ void setup() {
   strip.show();   // make sure it is visible
   strip.clear();
 
-  for(int i; i>numPixels; i++){
-    strip.setPixelColor(i, 255,0,0);// Pixeltest
-  }
-  strip.show();
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Adresse 0x3C für 128x64
     Serial.println(F("SSD1306 allocation failed"));// Display finden / Fehler
@@ -125,9 +128,8 @@ void loop() {
 
   if (state != laststate) {
     menuscroll(counter, currentMenu, currentMenuSize);
-  }
   laststate = state;
-
+  }
   //Menüauswahl
 
   if (digitalRead(swr) == LOW) {
@@ -227,20 +229,22 @@ void timer(int t) {
     }
     currentmillis = millis();
     if (currentmillis - lastmillis >= 1000) {
+      Serial.printf("%d numPixels, %d t, %d sec \n", numPixels, t, sec);
+      Serial.println(numPixels/t);
+      pixelpersec = (numPixels/t);
+      Serial.println(pixelpersec);
+      pixelTime = int(pixelpersec*sec);
+      Serial.printf("%dPixeltime\n", pixelTime);
+      Pixels(pixelTime);
       lastmillis = currentmillis;
       sec++;
       display.clearDisplay();
       display.setCursor(0, 0);
       display.printf("Timer %ds", t);
       display.setCursor(0, 10);
-      display.printf("%ds", t - sec);
+      int min = (t - sec)/60;
+      display.printf("%d:%d",min , (t-sec)-min*60);
       display.display();
-      Serial.printf("%d numPixels, %d t, %d sec", numPixels, t, sec);
-      Serial.println(numPixels/t);
-      pixelTime = int((numPixels/t)*sec);
-      Serial.printf("%dPixeltime", pixelTime);
-      Pixels(pixelTime);
-
     }
   }
   // Timer completed
@@ -248,6 +252,7 @@ void timer(int t) {
   display.setCursor(0, 0);
   display.printf("Timer Completed");
   display.display();
+  Pixels(numPixels);
   delay(2000);
   allOff();
 }
@@ -285,7 +290,7 @@ void submenu(String choice){
       Serial.print("Standby Time");
       //Funktion für Standby Time
     }else if(choice == "LED Farbe"){
-      LEDcolour();
+      LEDcolor();
     }
   default:
     break;
@@ -296,52 +301,73 @@ void submenu(String choice){
 void allOff() {
   strip.clear();
   strip.show();
+  delay(50);
 }
 
 void Pixels(int pixels){
-  red = 255;
+  allOff();
   Serial.println("in function");
   Serial.println(pixels);
-  for(int i; i>pixels; i++){
+  for(int i=0; i<pixels; i++){
     strip.setPixelColor(i, red ,green ,blue);
   }
   Serial.print("LED an");
   strip.show();
 }
 
-void LEDcolour(){
-  int back = 0;
-  int colourchange = 0;
-  int colour = 0;
-  do{
-    switch (colour)
+void activate() {
+   // first 20 pixels = color set #1
+   if(pixelcol == 0){
+    for( int i = 0; i < 8; i++ ) {
+       strip.setPixelColor(i, 255, 0, 0 );
+    }
+   }else if (pixelcol == 1)
+   {
+    for( int i = 0; i < 8 ; i++ ) {
+       strip.setPixelColor(i, 0, 255, 0 );
+    }
+   }else if (pixelcol == 2)
+   {
+    for( int i = 0; i < 8; i++ ) {
+       strip.setPixelColor(i, 0, 0, 255 );
+    }
+   }
+ 
+  strip.show();
+}
+
+
+void LEDcolor(){
+  delay(500);
+  while(back==0){
+    switch (colorchange)
     {
     case 0:
       display.clearDisplay();
       display.setCursor(0, 0);
-      display.printf("-> Rot:%d", red);
-      display.printf("   Blau:%d", blue);
-      display.printf("   Grün:%d", green);
+      display.printf("-> Rot:%d\n", red);
+      display.printf("   Blau:%d\n", blue);
+      display.printf("   Gruen:%d\n", green);
       display.display();
-      red = colour;
+      red = counter;
       break;
     case 1:
       display.clearDisplay();
       display.setCursor(0, 0);
-      display.printf("   Rot:%d", red);
-      display.printf("-> Blau:%d", blue);
-      display.printf("   Grün:%d", green);
+      display.printf("   Rot:%d\n", red);
+      display.printf("-> Blau:%d\n", blue);
+      display.printf("   Gruen:%d\n", green);
       display.display();
-      blue = colour;
+      blue = counter;
       break;
     case 2:
       display.clearDisplay();
       display.setCursor(0, 0);
-      display.printf("   Rot:%d", red);
-      display.printf("   Blau:%d", blue);
-      display.printf("-> Grün:%d", green);
+      display.printf("   Rot:%d\n", red);
+      display.printf("   Blau:%d\n", blue);
+      display.printf("-> Gruen:%d\n", green);
       display.display();
-      green = colour;
+      green = counter;
       break;
     default:
       break;
@@ -351,15 +377,22 @@ void LEDcolour(){
   currentMenuSize = 255;
   counter = rotary(state, laststate);
   if (state != laststate) {
-    colour = counter;
+    laststate = state;
+    Pixels(numPixels);
   }
-  laststate = state;
   if(digitalRead(swr) == LOW){
-    colourchange = (colourchange+1)%3;
+    colorchange = (colorchange+1)%3;
+    switch(colorchange){
+      case 0:
+      counter = red;
+      case 1:
+      counter = blue;
+      case 2:
+      counter = green;
+    }
+    delay(500);
   }
-  if(digitalRead(sw1 == HIGH)){
-    back = 1;
+
   }
-  
-  }while (back == 0);
 }
+
