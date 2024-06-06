@@ -22,11 +22,13 @@
 // Rotary Encoder lesen, Menüposition bekommen
 int rotary(int state, int laststate); 
 //Durch Menü scrollen
-void menuscroll(int counter, String menu[], int menuSize); 
+void menuscroll(String menu[], int menuSize); 
 // Base Timer Function
 void timer(int t); 
 // Copy von ausgewählten Menü erstellen
 void menucopy(String source[], String dest[], int size); 
+//Menüauswahl
+void menuauswahl();
 // Auswahl in Submenüs
 void submenu(String choice);
 // Neopixel aus 
@@ -36,6 +38,10 @@ void Pixels(int pixels);
 // LED Streifen Farbe auswählen 
 void LEDcolor(); 
 void activate();
+//Helligkeit
+void brightness();
+//Header
+void header();
 
 // Variablen
 
@@ -74,6 +80,15 @@ float pixelpersec = 0;
 int back = 0;
 int colorchange = 0;
 int color = 0;
+//Brightness
+bool dim = 0;
+char dimchar = 'Nein';
+//Time
+int hh = 11;
+int mm = 11;
+int ss = 11;
+//afterheader Y
+int y = 11;
 
 //Initialisiere Adafruit
 
@@ -104,6 +119,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(0, 0);
+  header();
 
   // Hauptmenü initialisieren
   currentMenuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
@@ -123,54 +139,7 @@ void setup() {
 }
 
 void loop() {
-  bool state = digitalRead(ccw);// Rotary neuauslesen
-  counter = rotary(state, laststate);
-
-  if (state != laststate) {
-    menuscroll(counter, currentMenu, currentMenuSize);
-  laststate = state;
-  }
-  //Menüauswahl
-
-  if (digitalRead(swr) == LOW) {
-    String choice = currentMenu[counter];
-    if (choice == "Timer") {
-      currentMenuSize = sizeof(timermenu) / sizeof(timermenu[0]);
-      menucopy(timermenu, currentMenu, currentMenuSize);
-    }else if (choice == "Zurueck"){ //goto mainmenu
-      currentMenuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
-      menucopy(mainmenu, currentMenu, currentMenuSize);
-    } else if (choice == "Eigener Timer"){
-      //Eigene Timer Funtkion
-    } else if (choice == "2 Timer"){
-      //Zwei Timer Funktion
-    }else if (choice == "Gerichte"){
-      currentMenuSize = sizeof(Gerichtemenu) / sizeof(Gerichtemenu[0]);
-      menucopy(Gerichtemenu, currentMenu, currentMenuSize);
-      menunumber = 1;
-    } else if (choice == "Einstellungen") {
-      currentMenuSize = sizeof(Settingsmenu) / sizeof(Settingsmenu[0]);
-      menucopy(Settingsmenu, currentMenu, currentMenuSize);
-      menunumber = 2;
-    } else if (choice == "Aus") {
-      display.clearDisplay();
-      display.setCursor(0, 0);
-      display.println("System aus...");
-      display.display();
-      delay(2000);
-      // Abschaltfunktion
-    } else if (choice.startsWith("Time")) {
-      int t = timers[counter];
-      timer(t);
-      currentMenuSize = sizeof(timermenu) / sizeof(timermenu[0]);
-      menucopy(timermenu, currentMenu, currentMenuSize);
-    } else{
-      submenu(choice);
-    }
-    counter = 0; // Reset counter to start at the beginning of new menu
-    menuscroll(counter, currentMenu, currentMenuSize);
-    delay(500);
-  }
+  menuauswahl();
 }
 
 int rotary(int state, int laststate) { // Rotary Encoder lesen, Menüposition bekommen
@@ -184,10 +153,11 @@ int rotary(int state, int laststate) { // Rotary Encoder lesen, Menüposition be
   return counter;
 }
 
-void menuscroll(int counter, String menu[], int menuSize) {
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  if (counter > 7){
+void menuscroll(String menu[], int menuSize) {
+  bool state = digitalRead(ccw);// Rotary neuauslesen
+  counter = rotary(state, laststate);
+  header();
+  if (counter > 5){
     for (int i = 7; i < menuSize; i++) {
     if (i == counter) {
       display.print("-> ");
@@ -217,14 +187,14 @@ void timer(int t) {
   int pixelTime = 0;
   Serial.printf("%d timer", t);
   sec = 0;
-  display.clearDisplay();
-  display.setCursor(0, 0);
+  header();
   display.printf("Starting Timer %ds", t);
   display.display();
   delay(1000);
   lastmillis = millis();
   while (sec < t) {
-    if (digitalRead(swr) == LOW) {
+    if (digitalRead(sw1) == HIGH) {
+    }else if(digitalRead(swr) == LOW){
       break;
     }
     currentmillis = millis();
@@ -238,18 +208,16 @@ void timer(int t) {
       Pixels(pixelTime);
       lastmillis = currentmillis;
       sec++;
-      display.clearDisplay();
-      display.setCursor(0, 0);
+      header();
       display.printf("Timer %ds", t);
-      display.setCursor(0, 10);
+      display.setCursor(0, y+10);
       int min = (t - sec)/60;
       display.printf("%d:%d",min , (t-sec)-min*60);
       display.display();
     }
   }
   // Timer completed
-  display.clearDisplay();
-  display.setCursor(0, 0);
+  header();
   display.printf("Timer Completed");
   display.display();
   Pixels(numPixels);
@@ -260,6 +228,54 @@ void timer(int t) {
 void menucopy(String source[], String dest[], int size) {
   for (int i = 0; i < size; i++) {
     dest[i] = source[i];
+  }
+}
+
+void menuauswahl(){
+  bool state = digitalRead(ccw);// Rotary neuauslesen
+  if (state != laststate) {
+    menuscroll(currentMenu, currentMenuSize);
+  laststate = state;
+  }
+  //Menüauswahl
+
+  if (digitalRead(swr) == LOW) {
+    String choice = currentMenu[counter];
+    if (choice == "Timer") {
+      currentMenuSize = sizeof(timermenu) / sizeof(timermenu[0]);
+      menucopy(timermenu, currentMenu, currentMenuSize);
+    }else if (choice == "Zurueck"){ //goto mainmenu
+      currentMenuSize = sizeof(mainmenu) / sizeof(mainmenu[0]);
+      menucopy(mainmenu, currentMenu, currentMenuSize);
+    } else if (choice == "Eigener Timer"){
+      //Eigene Timer Funtkion
+    } else if (choice == "2 Timer"){
+      //Zwei Timer Funktion
+    }else if (choice == "Gerichte"){
+      currentMenuSize = sizeof(Gerichtemenu) / sizeof(Gerichtemenu[0]);
+      menucopy(Gerichtemenu, currentMenu, currentMenuSize);
+      menunumber = 1;
+    } else if (choice == "Einstellungen") {
+      currentMenuSize = sizeof(Settingsmenu) / sizeof(Settingsmenu[0]);
+      menucopy(Settingsmenu, currentMenu, currentMenuSize);
+      menunumber = 2;
+    } else if (choice == "Aus") {
+      header();
+      display.println("System aus...");
+      display.display();
+      delay(2000);
+      // Abschaltfunktion
+    } else if (choice.startsWith("Time")) {
+      int t = timers[counter];
+      timer(t);
+      currentMenuSize = sizeof(timermenu) / sizeof(timermenu[0]);
+      menucopy(timermenu, currentMenu, currentMenuSize);
+    } else{
+      submenu(choice);
+    }
+    counter = 0; // Reset counter to start at the beginning of new menu
+    menuscroll(currentMenu, currentMenuSize);
+    delay(500);
   }
 }
 
@@ -285,7 +301,7 @@ void submenu(String choice){
       //Funktion für Lautstärke
     } else if (choice == "Helligkeit"){
       Serial.print("Helligkeit");
-      //Funktion für Helligkeit
+      brightness();
     }else if (choice == "Standby Time"){
       Serial.print("Standby Time");
       //Funktion für Standby Time
@@ -343,8 +359,7 @@ void LEDcolor(){
     switch (colorchange)
     {
     case 0:
-      display.clearDisplay();
-      display.setCursor(0, 0);
+      header();
       display.printf("-> Rot:%d\n", red);
       display.printf("   Blau:%d\n", blue);
       display.printf("   Gruen:%d\n", green);
@@ -352,8 +367,7 @@ void LEDcolor(){
       red = counter;
       break;
     case 1:
-      display.clearDisplay();
-      display.setCursor(0, 0);
+      header();
       display.printf("   Rot:%d\n", red);
       display.printf("-> Blau:%d\n", blue);
       display.printf("   Gruen:%d\n", green);
@@ -361,8 +375,7 @@ void LEDcolor(){
       blue = counter;
       break;
     case 2:
-      display.clearDisplay();
-      display.setCursor(0, 0);
+      header();
       display.printf("   Rot:%d\n", red);
       display.printf("   Blau:%d\n", blue);
       display.printf("-> Gruen:%d\n", green);
@@ -396,3 +409,38 @@ void LEDcolor(){
   }
 }
 
+void brightness(){
+  header();
+  display.printf("Dimmen: %c", dimchar);
+  while(back == 0){
+    if(digitalRead(swr)==LOW){
+      dim = (dim+1)%2;
+      delay(100);
+      if(dim == 1){
+        display.dim(true);
+        dimchar = 'Ja';
+        header();
+        display.printf("Dimmen: %c", dimchar);
+      }else{
+        display.dim(false);
+        dimchar = 'Nein';
+        header();
+        display.printf("Dimmen: %c", dimchar);
+      }
+    }
+    if(digitalRead(sw1) == 1){
+      back = 1;
+    }
+  }
+}
+
+void header(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.printf("%d:%d:%d", hh, mm, ss);
+  display.setCursor(80,0);
+  display.print("Duoringo");
+  display.setCursor(0,9);
+  display.drawLine(0, 9, SCREEN_WIDTH-1, 9,SSD1306_INVERSE);
+  display.setCursor(0,y);
+}
