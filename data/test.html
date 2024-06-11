@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toggle-Slider Ausklappbarer Block</title>
+    <style>
+        .toggle-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background-color: #ccc;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-switch::before {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active {
+            background-color: #4caf50;
+        }
+
+        .toggle-switch.active::before {
+            transform: translateX(25px);
+        }
+
+        .toggle-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .toggle-content.open {
+            max-height: 1000px; /* oder ein Wert, der groß genug ist, um den gesamten Inhalt zu enthalten */
+        }
+    </style>
+</head>
+<body>
+
+<div class="toggle-container">
+    <div class="toggle-switch" onclick="toggleContent()"></div>
+    <span style="margin-left: 10px;">Mehr erfahren</span>
+</div>
+
+<div class="toggle-content" id="content">
+    <p>Hier steht der ausklappbare Inhalt. Du kannst hier beliebigen HTML-Code einfügen, z.B. Texte, Bilder, Listen usw.</p>
+</div>
+
+<script>
+    function toggleContent() {
+        var toggleSwitch = document.querySelector('.toggle-switch');
+        var content = document.getElementById('content');
+        
+        toggleSwitch.classList.toggle('active');
+        content.classList.toggle('open');
+    }
+</script>
+
+</body>
+</html>
