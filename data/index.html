@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<!--Zeitleiste -->
+<div id="timebar" style="height: 20px;">
+  <p id="datetime" style="font-size: medium; text-align: left;"></p>
+</div>
+<!--Überschrift und "Setup" -->
+<head>
+  <title>Duoringo Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+  <h1>Duoringo Web Control</h1>
+  <!-- Slider Multitimer -->
+  <legend>Multitimer</legend>
+  <label class="switch">
+    <input type="checkbox" id="multitoggle" name="multitoggle" onchange="checktoggle(value)">
+    <span class="toggle round"></span>
+  </label>
+
+  <form>
+    <fieldset>
+      <legend>Anzahl der Timer auswählen</legend>
+      <!-- Slider Timerzahl-->
+      <div class="slidecontainer">
+        <input type="range" min="1" max="10" value="1" class="slider" id="timerZahl" onchange="insertTimerzahl(value);togglemultitimes(this.value)">
+      </div>
+      <div class="container">
+        <div id="timerzahlbox" value = "">Timerzahl: 1</div>
+      </div>
+    </fieldset>
+  </form>
+
+  <!--Timeboxen -->
+  <div class="timeboxcontainer" id="timeboxcontainer">
+    <div class="timebox" id="timebox1" value=""> Zeit auswählen</div>
+  </div>
+  <!--Commandbuttons -->
+  <div class="commandbuttons" id="deletebut" onclick="deleteTimes()">Löschen</div>
+  <div class="container">
+    <div class="commandbuttons"> Starten</div>
+    <div class="commandbuttons"> Stop</div>
+    <div class="commandbuttons"> Pause</div>
+  </div>
+  <!--Zeitbuttons -->
+  <button class="buttontimes" id ="10:00 min" value=10 onclick="insertTime(id, value)">10 Minuten</button>
+  <div class="container">
+    <div class="pseudoconsole" id="pseudoconsole">"Console" (⌐ ͡■ ͜ʖ ͡■)</div>
+  </div>
+<!--
+  <p><a href="/off"><button class="button button2">OFF</button></a></p>
+  <p><a href="/ip"><button class="button ip">IP</button></a></p>
+-->
+  <script>    ///////////////////////////SCRIPT/////////////////////////
+    //Variablen
+    firstboxfilled = false;
+    const timebox1 = document.getElementById('timebox1'); //dieser befehl holt sich ein Element und tut es in ne Variable, deren Info
+    const timerZahl = document.getElementById('timerZahl');
+    const pconsole = document.getElementById('pseudoconsole');
+    const timeboxcontainer = document.getElementById('timeboxcontainer');
+    const multitoggle = document.getElementById('multitoggle');
+    const multitogglecheck = multitoggle.checked;
+
+    //Uhrzeit
+    var now = new Date();
+    var datetime = now.toLocaleString(); 
+    document.getElementById("datetime").innerHTML = datetime;
+    
+    //Überwacht den Bool Zustand des Toggles und setzt bei false die Timeboxen zurück
+    function checktoggle(){
+      const multitoggle = document.getElementById('multitoggle');
+      const multitogglecheck = multitoggle.checked;
+      const slider = document.getElementById('timerZahl');
+      if (multitogglecheck == false){
+        timeboxcontainer.innerHTML = '<div class="timebox" id="timebox1" value=""> Zeit auswählen</div>'
+        slider.value = 1;
+        timerzahlbox.innerText = "Timerzahl: 1"
+      }
+      slider.disabled = !multitoggle.checked;
+
+
+    }
+    //Toggle für mehrere Zeitboxen
+    function togglemultitimes(value) {
+      const multitogglecheck = multitoggle.checked;
+      if (multitogglecheck) {
+        timeboxcontainer.innerHTML=''
+        for (let i=1;i<=value; i++){ //let erstellt eine lokale Variable, nicht global (Nur html)
+          const neueBox = document.createElement('div');
+          neueBox.className = "timebox"; 
+          neueBox.id = "timebox"+i;
+          neueBox.textContent = 'Zeit auswählen';
+          timeboxcontainer.appendChild(neueBox);
+          pconsole.innerText = i;
+        }
+      }
+    }
+
+    //Geklickter Button in Box einsetzen
+    function insertTime(timetext, timevalue) { //timetext = angezeigte zeit in der Box
+      const isEinTimer = document.getElementById('EinTimer').checked;
+      if (isEinTimer) {
+        timebox1.innerText = timetext;
+        timebox1.value = timevalue;
+      } else {
+        if (firstboxfilled == false){
+        timebox1.innerText = timetext;
+        timebox1.value = timevalue;
+        firstboxfilled = true
+      } else {
+        timebox2.innerText = timetext;
+        timebox2.value = timevalue;
+      }
+      }
+    }
+
+    function insertTimerzahl(timez){
+      timerzahlbox.innerText = "Timerzahl: " +timez;
+    }
+
+    //Steuerbuttons
+    function deleteTimes()  {
+      timebox1.value = "";
+      timebox2.value = "";
+      timebox1.innerText ="Zeit auswählen";
+      timebox2.innerText ="Zeit auswählen";
+      firstboxfilled = false;
+    }
+
+    //Console
+    function writeToConsole() {
+      console.log("Hallo von der HTML-Seite!");
+    }
+  </script>
+</body>
+<p>GPIO state: <strong> %STATE%</strong></p>
+<p>IP: <strong> %IP%</strong></p>
+</html>
+
+<!--
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toggle-Slider Ausklappbarer Block</title>
+    <style>
+        .toggle-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background-color: #ccc;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-switch::before {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active {
+            background-color: #4caf50;
+        }
+
+        .toggle-switch.active::before {
+            transform: translateX(25px);
+        }
+
+        .toggle-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .toggle-content.open {
+            max-height: 1000px; /* oder ein Wert, der groß genug ist, um den gesamten Inhalt zu enthalten */
+        }
+    </style>
+</head>
+<body>
+
+<div class="toggle-container">
+    <div class="toggle-switch" onclick="toggleContent()"></div>
+    <span style="margin-left: 10px;">Mehr erfahren</span>
+</div>
+
+<div class="toggle-content" id="content">
+    <p>Hier steht der ausklappbare Inhalt. Du kannst hier beliebigen HTML-Code einfügen, z.B. Texte, Bilder, Listen usw.</p>
+</div>
+
+<script>
+    function toggleContent() {
+        var toggleSwitch = document.querySelector('.toggle-switch');
+        var content = document.getElementById('content');
+        
+        toggleSwitch.classList.toggle('active');
+        content.classList.toggle('open');
+    }
+</script>
+
+</body>
+</html>
+-->
